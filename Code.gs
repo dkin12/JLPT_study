@@ -15,73 +15,47 @@ function getSheet() {
   return sheet;
 }
 
+// 모든 요청을 doGet으로 처리 (JSONP) — POST는 CORS 문제로 사용 안 함
 function doGet(e) {
   var action = e.parameter.action;
-  var callback = e.parameter.callback; // JSONP 지원
+  var callback = e.parameter.callback;
+  var sheet = getSheet();
+  var result;
 
   if (action === 'getAll') {
-    var sheet = getSheet();
     var rows = sheet.getDataRange().getValues();
     var words = rows.slice(1).map(function(row) {
       return {
-        id: row[0],
-        kanji: row[1],
-        furigana: row[2],
-        meaning: row[3],
-        tags: row[4] ? row[4].split(',') : [],
-        created: row[5]
+        id: row[0], kanji: row[1], furigana: row[2],
+        meaning: row[3], tags: row[4] ? row[4].split(',') : [], created: row[5]
       };
     }).filter(function(w) { return w.id; });
-    return jsonpOrJson({ ok: true, words: words }, callback);
-  }
+    result = { ok: true, words: words };
 
-  return jsonpOrJson({ ok: false, error: 'unknown action' }, callback);
-}
-
-function jsonpOrJson(obj, callback) {
-  var text = JSON.stringify(obj);
-  if (callback) {
-    return ContentService
-      .createTextOutput(callback + '(' + text + ')')
-      .setMimeType(ContentService.MimeType.JAVASCRIPT);
-  }
-  return ContentService
-    .createTextOutput(text)
-    .setMimeType(ContentService.MimeType.JSON);
-}
-
-function doPost(e) {
-  var data = JSON.parse(e.postData.contents);
-  var action = data.action;
-  var sheet = getSheet();
-
-  if (action === 'add') {
-    var words = data.words;
+  } else if (action === 'add') {
+    var words = JSON.parse(e.parameter.data);
     words.forEach(function(w) {
-      sheet.appendRow([
-        w.id,
-        w.kanji,
-        w.furigana,
-        w.meaning,
-        (w.tags || []).join(','),
-        new Date().toISOString()
-      ]);
+      sheet.appendRow([w.id, w.kanji, w.furigana, w.meaning, (w.tags||[]).join(','), new Date().toISOString()]);
     });
-    return jsonResponse({ ok: true, added: words.length });
-  }
+    result = { ok: true, added: words.length };
 
-  if (action === 'delete') {
-    var id = String(data.id);
+  } else if (action === 'delete') {
+    var id = String(e.parameter.id);
     var rows = sheet.getDataRange().getValues();
     for (var i = rows.length - 1; i >= 1; i--) {
-      if (String(rows[i][0]) === id) {
-        sheet.deleteRow(i + 1);
-        break;
-      }
+      if (String(rows[i][0]) === id) { sheet.deleteRow(i + 1); break; }
     }
-    return jsonResponse({ ok: true });
+    result = { ok: true };
+
+  } else {
+    result = { ok: false, error: 'unknown action' };
   }
 
-  return jsonResponse({ ok: false, error: 'unknown action' });
+  var text = JSON.stringify(result);
+  if (callback) {
+    return ContentService.createTextOutput(callback + '(' + text + ')')
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return ContentService.createTextOutput(text).setMimeType(ContentService.MimeType.JSON);
 }
 
