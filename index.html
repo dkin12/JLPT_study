@@ -292,19 +292,16 @@
 <script>
 const GAS_URL = localStorage.getItem('gas_url') || '';
 
-let words = [];
+// localStorage가 기본 저장소 — Sheet는 선택적 동기화
+let words = JSON.parse(localStorage.getItem('jlpt_words') || '[]');
 let activeTag = null;
 
-function setCount() {
+function saveLocal() {
+  localStorage.setItem('jlpt_words', JSON.stringify(words));
   document.getElementById('total-count').textContent = words.length + '개';
 }
 
-// Google Sheets 연동 -------------------------------------------------
-
-async function apiGet() {
-  const res = await apiCall({ action: 'getAll' });
-  return res && res.ok ? res.words : null;
-}
+// Google Sheets 연동 (JSONP — CORS 우회) ----------------------------
 
 function apiCall(params) {
   return new Promise(function(resolve) {
@@ -312,10 +309,14 @@ function apiCall(params) {
     var cbName = 'jlpt_cb_' + Date.now();
     var script = document.createElement('script');
     var timer = setTimeout(function() {
-      delete window[cbName]; document.head.removeChild(script); resolve(null);
+      delete window[cbName];
+      if (document.head.contains(script)) document.head.removeChild(script);
+      resolve(null);
     }, 8000);
     window[cbName] = function(data) {
-      clearTimeout(timer); delete window[cbName]; document.head.removeChild(script); resolve(data);
+      clearTimeout(timer); delete window[cbName];
+      if (document.head.contains(script)) document.head.removeChild(script);
+      resolve(data);
     };
     var qs = Object.keys(params).map(function(k) {
       return k + '=' + encodeURIComponent(params[k]);
@@ -325,28 +326,28 @@ function apiCall(params) {
   });
 }
 
-async function apiAdd(newWords) {
+async function syncFromSheet() {
+  if (!GAS_URL) return;
+  toast('동기화 중...');
+  const res = await apiCall({ action: 'getAll' });
+  if (res && res.ok) {
+    words = res.words;
+    saveLocal();
+    renderList();
+    toast('동기화 완료 ✓');
+  } else {
+    toast('Sheet 연결 실패 — 로컬 데이터 표시 중');
+  }
+}
+
+async function sheetAdd(newWords) {
   if (!GAS_URL) return;
   await apiCall({ action: 'add', data: JSON.stringify(newWords) });
 }
 
-async function apiDelete(id) {
+async function sheetDelete(id) {
   if (!GAS_URL) return;
-  await apiCall({ action: 'delete', id: id });
-}
-
-async function loadFromSheet() {
-  if (!GAS_URL) return;
-  toast('불러오는 중...');
-  const remote = await apiGet();
-  if (remote) {
-    words = remote;
-    setCount();
-    renderList();
-    toast('동기화 완료 ✓');
-  } else {
-    toast('연결 실패 — URL을 확인해주세요');
-  }
+  await apiCall({ action: 'delete', id: String(id) });
 }
 
 function parseLines(text) {
@@ -407,29 +408,22 @@ function previewWords() {
 async function addWords() {
   const parsed = parseLines(document.getElementById('word-input').value);
   if (!parsed.length) { toast('입력된 단어가 없어요'); return; }
-  if (GAS_URL) {
-    toast('저장 중...');
-    await apiAdd(parsed);
-    await loadFromSheet();
-  } else {
-    words = [...words, ...parsed];
-    setCount();
-    renderTagCloud();
-    toast(parsed.length + '개 추가됨 ✓');
-  }
+  // 로컬에 바로 저장 (즉각 반응)
+  words = [...words, ...parsed];
+  saveLocal();
+  renderTagCloud();
+  toast(parsed.length + '개 추가됨 ✓');
   document.getElementById('word-input').value = '';
   document.getElementById('preview-area').style.display = 'none';
+  // Sheet에 백그라운드로 동기화
+  if (GAS_URL) sheetAdd(parsed);
 }
 
 async function deleteWord(id) {
-  if (GAS_URL) {
-    await apiDelete(id);
-    await loadFromSheet();
-  } else {
-    words = words.filter(w => String(w.id) !== String(id));
-    setCount();
-    renderList();
-  }
+  words = words.filter(w => String(w.id) !== String(id));
+  saveLocal();
+  renderList();
+  if (GAS_URL) sheetDelete(id);
 }
 
 function filterTag(tag) {
@@ -566,7 +560,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   document.getElementById('btn-sync').addEventListener('click', function() {
     if (!localStorage.getItem('gas_url')) { toast('URL을 먼저 저장해주세요'); return; }
-    loadFromSheet();
+    syncFromSheet();
   });
 
   document.getElementById('btn-clear-all').addEventListener('click', function() {
@@ -579,7 +573,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // 연동된 URL이 있으면 앱 시작 시 자동 로드
   if (savedUrl) {
-    loadFromSheet();
+    syncFromSheet();
   }
 });
 </script>
