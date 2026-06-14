@@ -17,11 +17,11 @@ function getSheet() {
 
 function doGet(e) {
   var action = e.parameter.action;
+  var callback = e.parameter.callback; // JSONP 지원
 
   if (action === 'getAll') {
     var sheet = getSheet();
     var rows = sheet.getDataRange().getValues();
-    var headers = rows[0];
     var words = rows.slice(1).map(function(row) {
       return {
         id: row[0],
@@ -32,10 +32,22 @@ function doGet(e) {
         created: row[5]
       };
     }).filter(function(w) { return w.id; });
-    return jsonResponse({ ok: true, words: words });
+    return jsonpOrJson({ ok: true, words: words }, callback);
   }
 
-  return jsonResponse({ ok: false, error: 'unknown action' });
+  return jsonpOrJson({ ok: false, error: 'unknown action' }, callback);
+}
+
+function jsonpOrJson(obj, callback) {
+  var text = JSON.stringify(obj);
+  if (callback) {
+    return ContentService
+      .createTextOutput(callback + '(' + text + ')')
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return ContentService
+    .createTextOutput(text)
+    .setMimeType(ContentService.MimeType.JSON);
 }
 
 function doPost(e) {
@@ -73,8 +85,3 @@ function doPost(e) {
   return jsonResponse({ ok: false, error: 'unknown action' });
 }
 
-function jsonResponse(obj) {
-  return ContentService
-    .createTextOutput(JSON.stringify(obj))
-    .setMimeType(ContentService.MimeType.JSON);
-}
