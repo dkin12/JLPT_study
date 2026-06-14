@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JLPT 단어장</title>
+<style>
+  :root {
+    --bg: #0f0f13;
+    --surface: #1a1a22;
+    --surface2: #22222e;
+    --border: #2e2e3e;
+    --accent: #7c6af5;
+    --accent2: #5cc8c8;
+    --text: #e8e8f0;
+    --muted: #888898;
+    --tag: #3a2e6e;
+    --tag-text: #b8aeff;
+    --danger: #e05555;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
+
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  header h1 { font-size: 1.1rem; font-weight: 700; color: var(--accent); flex: 1; }
+  header span { font-size: 0.8rem; color: var(--muted); }
+
+  .tabs {
+    display: flex;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 20px;
+  }
+  .tab {
+    padding: 10px 18px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    color: var(--muted);
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+  }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .page { display: none; padding: 20px; max-width: 680px; margin: 0 auto; }
+  .page.active { display: block; }
+
+  /* Add Page */
+  .input-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  .input-box label { display: block; font-size: 0.78rem; color: var(--muted); margin-bottom: 8px; }
+  textarea, input[type=text] {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    color: var(--text);
+    font-size: 0.95rem;
+    outline: none;
+    transition: border-color 0.2s;
+    resize: vertical;
+  }
+  textarea:focus, input[type=text]:focus { border-color: var(--accent); }
+  textarea { min-height: 140px; font-family: inherit; line-height: 1.6; }
+
+  .format-hint {
+    background: var(--surface2);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 8px 8px 0;
+    padding: 10px 14px;
+    margin-top: 10px;
+    font-size: 0.82rem;
+    color: var(--muted);
+    line-height: 1.7;
+  }
+  .format-hint code {
+    background: var(--border);
+    padding: 1px 5px;
+    border-radius: 4px;
+    color: var(--accent2);
+    font-size: 0.85em;
+  }
+
+  .btn {
+    width: 100%;
+    padding: 13px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+  .btn:hover { opacity: 0.85; }
+  .btn.secondary { background: var(--surface2); border: 1px solid var(--border); color: var(--text); margin-top: 8px; }
+
+  .preview-area { margin-top: 14px; }
+  .preview-title { font-size: 0.78rem; color: var(--muted); margin-bottom: 8px; }
+
+  /* Word Cards */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 18px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    animation: fadeIn 0.2s ease;
+  }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; } }
+  .card-num { font-size: 0.75rem; color: var(--muted); min-width: 24px; padding-top: 3px; }
+  .card-body { flex: 1; }
+  .card-kanji { font-size: 1.35rem; font-weight: 700; color: var(--text); line-height: 1.2; }
+  .card-furigana { font-size: 0.8rem; color: var(--accent2); margin: 3px 0 5px; }
+  .card-meaning { font-size: 0.9rem; color: var(--muted); }
+  .card-tags { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 5px; }
+  .tag-pill {
+    background: var(--tag);
+    color: var(--tag-text);
+    font-size: 0.72rem;
+    padding: 2px 8px;
+    border-radius: 20px;
+    cursor: pointer;
+  }
+  .card-del {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 2px 4px;
+    border-radius: 4px;
+    transition: color 0.2s;
+  }
+  .card-del:hover { color: var(--danger); }
+
+  /* List Page */
+  .search-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .search-bar input { flex: 1; min-height: 42px; }
+  .clear-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 8px;
+    padding: 0 14px;
+    cursor: pointer;
+    font-size: 0.82rem;
+    white-space: nowrap;
+  }
+  .clear-btn:hover { color: var(--text); }
+
+  .tag-cloud {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 16px;
+  }
+  .tag-cloud-item {
+    background: var(--tag);
+    color: var(--tag-text);
+    font-size: 0.78rem;
+    padding: 4px 10px;
+    border-radius: 20px;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all 0.15s;
+  }
+  .tag-cloud-item.active { border-color: var(--accent); background: var(--accent); color: #fff; }
+
+  .stats { font-size: 0.8rem; color: var(--muted); margin-bottom: 12px; }
+
+  .empty { text-align: center; color: var(--muted); padding: 48px 20px; font-size: 0.9rem; line-height: 1.8; }
+
+  /* Data Page */
+  .data-actions { display: flex; flex-direction: column; gap: 10px; }
+  .data-info { font-size: 0.82rem; color: var(--muted); background: var(--surface2); border-radius: 8px; padding: 10px 14px; line-height: 1.7; }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--accent);
+    color: #fff;
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: transform 0.3s ease;
+    z-index: 100;
+    white-space: nowrap;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  @media (max-width: 480px) {
+    .page { padding: 14px; }
+    header { padding: 12px 14px; }
+    .card-kanji { font-size: 1.2rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>📖 JLPT 단어장</h1>
+  <span id="total-count">0개</span>
+</header>
+
+<div class="tabs">
+  <div class="tab active" data-tab="add">추가</div>
+  <div class="tab" data-tab="list">단어 목록</div>
+  <div class="tab" data-tab="data">데이터</div>
+</div>
+
+<!-- ADD PAGE -->
+<div id="page-add" class="page active">
+  <div class="input-box">
+    <label>단어 입력 (여러 개는 줄바꿈으로 구분)</label>
+    <textarea id="word-input" placeholder="微生物 (びせいぶつ) 미생물&#10;環境 (かんきょう) 환경 #N2 #생물&#10;記憶 (きおく) 기억 #N3"></textarea>
+    <div class="format-hint">
+      형식: <code>漢字 (ふりがな) 한글뜻</code> — 줄 끝에 <code>#태그</code> 추가 가능<br>
+      괄호 없이 히라가나만: <code>さくら 벚꽃 #N5</code><br>
+      한자만: <code>愛 사랑</code>
+    </div>
+  </div>
+
+  <div id="preview-area" class="preview-area" style="display:none">
+    <div class="preview-title">미리보기</div>
+    <div id="preview-cards"></div>
+  </div>
+
+  <button id="btn-add" class="btn">추가하기</button>
+  <button id="btn-preview" class="btn secondary">미리보기</button>
+</div>
+
+<!-- LIST PAGE -->
+<div id="page-list" class="page">
+  <div class="search-bar">
+    <input type="text" id="search-input" placeholder="단어, 뜻, #태그 검색...">
+    <button id="btn-clear-search" class="clear-btn">초기화</button>
+  </div>
+  <div id="tag-cloud" class="tag-cloud"></div>
+  <div id="stats" class="stats"></div>
+  <div id="word-list"></div>
+</div>
+
+<!-- DATA PAGE -->
+<div id="page-data" class="page">
+  <div class="input-box">
+    <label>데이터 관리</label>
+    <div class="data-info">
+      단어는 이 기기의 브라우저(localStorage)에 저장됩니다.<br>
+      다른 기기에서도 쓰려면 아래에서 내보낸 뒤 가져오세요.
+    </div>
+  </div>
+  <div class="data-actions">
+    <button id="btn-export" class="btn">JSON으로 내보내기</button>
+    <button id="btn-import-trigger" class="btn secondary">JSON 가져오기</button>
+    <input type="file" id="import-file" accept=".json" style="display:none">
+    <button id="btn-clear-all" class="btn secondary" style="color:var(--danger);border-color:var(--danger)">전체 삭제</button>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+let words = JSON.parse(localStorage.getItem('jlpt_words') || '[]');
+let activeTag = null;
+
+function save() {
+  localStorage.setItem('jlpt_words', JSON.stringify(words));
+  document.getElementById('total-count').textContent = words.length + '개';
+}
+
+function parseLines(text) {
+  const lines = text.trim().split('\n').map(l => l.trim()).filter(Boolean);
+  return lines.map(parseLine).filter(Boolean);
+}
+
+function parseLine(line) {
+  if (!line) return null;
+
+  const tags = [];
+  const tagRegex = /#[\w가-힣ㄱ-ㆎ]+/g;
+  let match;
+  while ((match = tagRegex.exec(line)) !== null) tags.push(match[0]);
+  const cleanLine = line.replace(tagRegex, '').trim();
+
+  const full = cleanLine.match(/^(.+?)\s*[(（](.+?)[)）]\s*(.+)$/);
+  if (full) {
+    return { kanji: full[1].trim(), furigana: full[2].trim(), meaning: full[3].trim(), tags, id: Date.now() + Math.random() };
+  }
+  const simple = cleanLine.match(/^(\S+)\s+(.+)$/);
+  if (simple) {
+    const isKana = /^[ぁ-ゟ゠-ヿ]+$/.test(simple[1]);
+    return { kanji: simple[1].trim(), furigana: isKana ? simple[1].trim() : '', meaning: simple[2].trim(), tags, id: Date.now() + Math.random() };
+  }
+  return null;
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function cardHTML(w, idx, deletable) {
+  const tagPills = w.tags.map(t =>
+    `<span class="tag-pill" data-tag="${escapeHtml(t)}">${escapeHtml(t)}</span>`
+  ).join('');
+  return `
+    <div class="card" data-id="${escapeHtml(String(w.id))}">
+      <span class="card-num">${idx + 1}</span>
+      <div class="card-body">
+        <div class="card-kanji">${escapeHtml(w.kanji)}</div>
+        ${w.furigana && w.furigana !== w.kanji ? `<div class="card-furigana">${escapeHtml(w.furigana)}</div>` : ''}
+        <div class="card-meaning">${escapeHtml(w.meaning)}</div>
+        ${tagPills ? `<div class="card-tags">${tagPills}</div>` : ''}
+      </div>
+      ${deletable ? `<button class="card-del" data-del="${escapeHtml(String(w.id))}" title="삭제">✕</button>` : ''}
+    </div>`;
+}
+
+function previewWords() {
+  const parsed = parseLines(document.getElementById('word-input').value);
+  const area = document.getElementById('preview-area');
+  if (!parsed.length) { area.style.display = 'none'; return; }
+  document.getElementById('preview-cards').innerHTML = parsed.map((w, i) => cardHTML(w, i, false)).join('');
+  area.style.display = 'block';
+}
+
+function addWords() {
+  const parsed = parseLines(document.getElementById('word-input').value);
+  if (!parsed.length) { toast('입력된 단어가 없어요'); return; }
+  words = [...words, ...parsed];
+  save();
+  document.getElementById('word-input').value = '';
+  document.getElementById('preview-area').style.display = 'none';
+  toast(parsed.length + '개 추가됨 ✓');
+  renderTagCloud();
+}
+
+function deleteWord(id) {
+  words = words.filter(w => String(w.id) !== String(id));
+  save();
+  renderList();
+}
+
+function filterTag(tag) {
+  activeTag = activeTag === tag ? null : tag;
+  document.getElementById('search-input').value = '';
+  switchTab('list');
+  renderList();
+}
+
+function clearSearch() {
+  activeTag = null;
+  document.getElementById('search-input').value = '';
+  renderList();
+}
+
+function renderTagCloud() {
+  const allTags = [...new Set(words.flatMap(w => w.tags))].sort();
+  const cloud = document.getElementById('tag-cloud');
+  cloud.innerHTML = allTags.map(t =>
+    `<span class="tag-cloud-item ${activeTag === t ? 'active' : ''}" data-tag="${escapeHtml(t)}">${escapeHtml(t)}</span>`
+  ).join('');
+}
+
+function renderList() {
+  renderTagCloud();
+  const query = document.getElementById('search-input').value.toLowerCase();
+  let filtered = words;
+
+  if (activeTag) {
+    filtered = filtered.filter(w => w.tags.includes(activeTag));
+  }
+  if (query) {
+    filtered = filtered.filter(w =>
+      w.kanji.toLowerCase().includes(query) ||
+      w.furigana.toLowerCase().includes(query) ||
+      w.meaning.toLowerCase().includes(query) ||
+      w.tags.some(t => t.toLowerCase().includes(query))
+    );
+  }
+
+  // Update active tag pills
+  document.querySelectorAll('.tag-cloud-item').forEach(el => {
+    el.classList.toggle('active', el.textContent === activeTag);
+  });
+
+  const stats = document.getElementById('stats');
+  stats.textContent = query || activeTag
+    ? `${filtered.length} / ${words.length}개`
+    : `총 ${words.length}개`;
+
+  const list = document.getElementById('word-list');
+  if (!filtered.length) {
+    list.innerHTML = `<div class="empty">단어가 없어요<br><span style="font-size:0.8rem">추가 탭에서 단어를 입력해보세요</span></div>`;
+    return;
+  }
+  list.innerHTML = filtered.map((w, i) => cardHTML(w, i)).join('');
+}
+
+function exportData() {
+  const blob = new Blob([JSON.stringify(words, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `jlpt_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  toast('내보내기 완료');
+}
+
+
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.tab === name);
+  });
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  if (name === 'list') renderList();
+}
+
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+function importData(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const imported = JSON.parse(ev.target.result);
+      if (!Array.isArray(imported)) throw new Error();
+      const existingIds = new Set(words.map(w => w.id));
+      const newWords = imported.filter(w => !existingIds.has(w.id));
+      words = [...words, ...newWords];
+      save();
+      toast(newWords.length + '개 추가됨 (' + (imported.length - newWords.length) + '개 중복 건너뜀)');
+      renderList();
+    } catch { toast('파일을 읽을 수 없어요'); }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+// Init — attach all listeners here (no inline onclick)
+document.addEventListener('DOMContentLoaded', function () {
+  save();
+  renderTagCloud();
+
+  // Tabs
+  document.querySelectorAll('.tab').forEach(function(tab) {
+    tab.addEventListener('click', function() { switchTab(tab.dataset.tab); });
+  });
+
+  // Add page
+  document.getElementById('btn-add').addEventListener('click', addWords);
+  document.getElementById('btn-preview').addEventListener('click', previewWords);
+
+  // List page
+  document.getElementById('search-input').addEventListener('input', renderList);
+  document.getElementById('btn-clear-search').addEventListener('click', clearSearch);
+
+  // Event delegation for tag pills and delete buttons (dynamically rendered)
+  document.addEventListener('click', function(e) {
+    var tag = e.target.dataset.tag;
+    if (tag) { filterTag(tag); return; }
+    var del = e.target.dataset.del;
+    if (del) { deleteWord(del); return; }
+  });
+
+  // Data page
+  document.getElementById('btn-export').addEventListener('click', exportData);
+  document.getElementById('btn-import-trigger').addEventListener('click', function() {
+    document.getElementById('import-file').click();
+  });
+  document.getElementById('import-file').addEventListener('change', importData);
+  document.getElementById('btn-clear-all').addEventListener('click', function() {
+    if (!confirm('단어를 모두 삭제할까요?')) return;
+    words = [];
+    save();
+    renderList();
+    toast('전체 삭제됨');
+  });
+});
+</script>
+</body>
+</html>
