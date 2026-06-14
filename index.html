@@ -507,7 +507,7 @@ function importData(e) {
       const existingIds = new Set(words.map(w => w.id));
       const newWords = imported.filter(w => !existingIds.has(w.id));
       words = [...words, ...newWords];
-      save();
+      setCount();
       toast(newWords.length + '개 추가됨 (' + (imported.length - newWords.length) + '개 중복 건너뜀)');
       renderList();
     } catch { toast('파일을 읽을 수 없어요'); }
